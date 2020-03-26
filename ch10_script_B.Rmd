@@ -21,18 +21,61 @@ train <- train %>%
 
 **Prompt:**  First, calculate three things for both the treated and the controls: the average `att_start`, `att_end` and `att_chg`.  Do those numbers make sense? Presumably, there is a mathematical relationship among them that you can check. (Recall that, for each person, `att_end` minus `att_start` should equal `att_chg`.) Second (in a new code chunk), and just as we did with income, calculate the difference in means between  treated and the controls for only `att_chg`. (You will want to get those values on the same row, so that subtraction can be done.) Does the difference seem "large?" Do the numbers seems sensible?  Provide an hypothesis as to why the average `att_chg` is not zero in both groups.
 
+```{r s8}
+train_1s8 <- train %>%
+  group_by(treatment) %>%
+  summarize(avg_start = mean(att_start), avg_end = mean(att_end), avg_chg = mean(att_chg))
+
+train_2s8 <- train_1s8 %>%
+  select(treatment, avg_chg) %>%
+  pivot_wider(names_from = treatment, values_from = avg_chg) %>%
+  mutate(diff = Treated-Control)
+
+
+sd(train$att_chg)
+```
+
+
 # Scene 9
 
 **Prompt:** What is the 99% confidence interval for the difference in means between the treated and the controls? Provide a Bayesian and Frequentist definition of that interval. Write them down in your Rmd! Are these results consistent with what Enos finds? Check out the paper and see! Why am I using a 99% confidence interval here? Why not 99.5% or 97%?
+
+```{r s9}
+sample_train <- train %>%
+  rep_sample_n(size = 115, replace = TRUE, reps = 1000) %>%
+  group_by(replicate, treatment) %>%
+  summarize(avg_chg = mean(att_chg)) %>%
+  pivot_wider(names_from = treatment, values_from = avg_chg) %>%
+  mutate(diff = Treated-Control) %>%
+  summarize(mean_diff = mean(diff)) %>%
+  pull(mean_diff) %>%
+  quantile(c(.005, 0.995))
+```
+
+Frequentist: if you repeated the same procedure infinite times, you would expect the difference of the means of the attitude change for the group that got treatment and the one that didn't to be between these values 99% of the time.
+
+Bayesian: we are 99% sure that the true value for mean attitude change lies between these values.
 
 
 # Scene 10
 
 **Prompt:** Use the language of the Rubin Causal Model and potential outcomes to describe this experiment. What are the units? What are the treatments? What are the outcomes? What is the *causal effect* we want to measure for each unit? Remind us what the *fundamental problem of causal inference* is. Write all this down in a paragraph you construct together. As always, each student needs their own paragraph. Preceptor still has `.my_cold_call()` . . .
 
+The units for the experiment are the 115 commuters sampled and surveyed. The treated participants get exposed to a set of Spanish-speaking individuals on train platforms. The outcomes are the changes in the participants' attitudes toward immigration. The causal effect is the change in attitude due to the exposure to Spanish-speaking people. The fundamental problem of causal inference in this case means that we cannot observe the causal effect on a single individual since they cannot be in the control and the treatment group at the same time. 
+
 # Scene 11
 
 **Prompt:** You can never look at your data too much. Create a scatter plot which shows our treatment indicator on the x-axis and attitude change on the y-axis. You may want to jitter your points, but probably not in both directions. Check that the plot is consistent with the averages which you calculated in Scene 8.  If you have time, re-calculate the mean for each group and add those means as a separate layer in the plot. Why is it that there was an attitude change among the Controls? What does Enos's model assumes is the potential outcome for `att_end` for commuters for the treatment condition which they were not in? What other assumption might one make?
+
+```{r s10}
+ggplot(train, aes(x = treatment, y = att_chg)) + 
+  geom_jitter(width = .4, height = 0) + 
+  geom_hline(yintercept = -0.4062500, color = "red") + 
+  geom_text(aes(y = -0.4062500, x = "Control"), label = "Control", color = "red", vjust = 1.2) + 
+  geom_hline(yintercept = 0.3921569	, color = "blue") +
+    geom_text(aes(y = 0.3921569, x = "Control"), label = "Treated", color = "blue", vjust = -0.55)
+```
+
 
 # Scene 12
 
